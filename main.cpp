@@ -1,30 +1,33 @@
 #include <iostream>
-#include <string>
+#include <windows.h>
+#include "input.h"
+#include "score.h"
+#include "radar.h"
+#include "file_utils.h"
+#include "ai.h"
+
 using namespace std;
 
-// 用户信息结构体
-struct User {
-    string name;
-    string major;
-    string skills;
-    string experience;
-};
-
 int main() {
-    User user;
+    system("chcp 65001 > nul");
+    cout << "===== AbilityRadar_AI 能力评估系统 =====\n" << endl;
 
-    cout << "请输入姓名：";
-    getline(cin, user.name);
+    UserInfo user = inputUserInfo();
+    AbilityScore score = calculateScore(user);
+    printScore(score);
 
-    cout << "请输入专业：";
-    getline(cin, user.major);
+    generateRadar(user, score);  // 已传user.name
+    saveReport(score);
 
-    cout << "请输入技能：";
-    getline(cin, user.skills);
+    AIResult aiRes = getAIAnalysis(user, score);
+    printAIResult(aiRes);
+    saveAIResult(aiRes);
 
-    cout << "请输入项目/实践经历：";
-    getline(cin, user.experience);
+    cout << "\n==================================================\n";
+    cout << "✅ 全部完成！\n";
+    cout << "📊 雷达图：output/radar.png\n";
+    cout << "📄 AI报告：output/ai_analysis.txt\n";
+    cout << "==================================================\n";
 
-    cout << "\n信息收集完成！\n";
     return 0;
 }
