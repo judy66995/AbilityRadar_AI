@@ -1,0 +1,55 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "编译AbilityRadar_AI",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "main.cpp",
+                "input.cpp",
+                "score.cpp",
+                "radar.cpp",
+                "file_utils.cpp",
+                "ai.cpp",
+                "-o",
+                "radar.exe",
+                "-std=c++17"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "编译所有源文件生成可执行程序"
+        },
+        {
+            "label": "运行AbilityRadar_AI",
+            "type": "shell",
+            "command": ".\\radar.exe",
+            "dependsOn": "编译AbilityRadar_AI",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "清理构建",
+            "type": "shell",
+            "command": "del",
+            "args": [
+                "/q",
+                "radar.exe",
+                "*.o"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

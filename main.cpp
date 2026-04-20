@@ -9,19 +9,19 @@
 using namespace std;
 
 int main() {
-    system("chcp 65001 > nul");
+    system("chcp 65001 > nul");// 设置控制台为UTF-8编码，确保中文显示正常
     cout << "===== AbilityRadar_AI 能力评估系统 =====\n" << endl;
 
-    UserInfo user = inputUserInfo();
-    AbilityScore score = calculateScore(user);
-    printScore(score);
+    UserInfo user = inputUserInfo();// 输入用户信息
+    AbilityScore score = calculateScore(user);// 计算能力分数
+    printScore(score);// 打印能力分数
 
-    generateRadar(user, score);  // 已传user.name
-    saveReport(score);
+    generateRadar(user, score);  // 生成雷达图
+    saveReport(score);// 保存能力评估报告
 
-    AIResult aiRes = getAIAnalysis(user, score);
-    printAIResult(aiRes);
-    saveAIResult(aiRes);
+    AIResult aiRes = getAIAnalysis(user, score);// 获取AI分析结果
+    printAIResult(aiRes);// 打印AI分析结果
+    saveAIResult(aiRes);// 保存AI分析结果
 
     cout << "\n==================================================\n";
     cout << "✅ 全部完成！\n";
