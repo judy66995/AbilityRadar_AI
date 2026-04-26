@@ -12,7 +12,7 @@ using namespace std;
 // 填入你的 DeepSeek Key
 // 请替换为您的有效API密钥，否则AI分析会失败
 // ======================
-#define DEEPSEEK_API_KEY "sk-c303ba2ca3304aada5570a5b103a7353"
+#define DEEPSEEK_API_KEY "sk-d616e455978a47429b22d2385622d3de"
 
 // 【彻底修复】JSON 转义函数（处理所有特殊字符，中文完全兼容）
 string escapeJson(const string &s) {
@@ -48,7 +48,7 @@ string makePrompt(const UserInfo& u, const AbilityScore& s) {
         s.professional, s.learning, s.project,
         s.teamwork, s.pressure, s.innovation
     );
-    return escapeJson(buf);
+    return string(buf);
 }
 
 // 读取文件内容（二进制模式，避免编码问题）
@@ -119,23 +119,22 @@ AIResult getAIAnalysis(const UserInfo& user, const AbilityScore& score) {
     // 确保output目录存在
     system("if not exist output mkdir output");
 
-    // 【修复】curl命令：添加超时、编码声明，避免中文乱码
-    char cmd[8192];
+    // 【修复】使用临时文件传递JSON，避免shell转义破坏JSON格式
+    // 先构建JSON请求文件
+    ofstream reqFile("output/request.json", ios::out | ios::trunc);
+    reqFile << "{\"model\":\"deepseek-chat\",\"messages\":[";
+    reqFile << "{\"role\":\"user\",\"content\":\"" << escapeJson(prompt) << "\"}";
+    reqFile << "],\"temperature\":0.3,\"max_tokens\":1000}";
+    reqFile.close();
+
+    // 使用 --data-binary 读取文件，避免shell二次转义
+    char cmd[1024];
     snprintf(cmd, sizeof(cmd),
         "curl -s -m 30 -X POST https://api.deepseek.com/chat/completions "
         "-H \"Authorization: Bearer %s\" "
         "-H \"Content-Type: application/json; charset=utf-8\" "
-        "-d \"{"
-            "\\\"model\\\":\\\"deepseek-chat\\\","
-            "\\\"messages\\\":[{"
-                "\\\"role\\\":\\\"user\\\","
-                "\\\"content\\\":\\\"%s\\\""
-            "}],"
-            "\\\"temperature\\\":0.3,"
-            "\\\"max_tokens\\\":1000"
-        "}\" > output/temp_response.json 2>&1",
-        DEEPSEEK_API_KEY, prompt.c_str()
-    );
+        "--data-binary @output/request.json > output/temp_response.json 2>&1",
+        DEEPSEEK_API_KEY);
 
     // 执行请求
     int ret = system(cmd);
