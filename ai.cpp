@@ -12,7 +12,7 @@ using namespace std;
 // 填入你的 DeepSeek Key
 // 请替换为您的有效API密钥，否则AI分析会失败
 // ======================
-#define DEEPSEEK_API_KEY "sk-d616e455978a47429b22d2385622d3de"
+#define DEEPSEEK_API_KEY "sk-d616e455978a47429b22d2385xxxx"
 
 // 【彻底修复】JSON 转义函数（处理所有特殊字符，中文完全兼容）
 string escapeJson(const string &s) {
