@@ -12,7 +12,7 @@ using namespace std;
 void generateRadar(const UserInfo& user, const AbilityScore& s) {
     system("if not exist output mkdir output");
 
-    // Save parameters to a temp JSON file
+    // 将用户姓名和能力分数写入临时文件，供Python脚本读取
     ofstream tempFile("output/radar_args.txt");
     tempFile << user.name << endl;
     tempFile << s.professional << " " << s.learning << " "
@@ -20,6 +20,6 @@ void generateRadar(const UserInfo& user, const AbilityScore& s) {
              << s.pressure << " " << s.innovation << endl;
     tempFile.close();
 
-    // Call Python with simple arguments
+    // 调用Python脚本生成雷达图
     int result = system("python plot.py");
 }

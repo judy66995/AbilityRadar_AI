@@ -8,13 +8,10 @@
 
 using namespace std;
 
-// ======================
-// 填入你的 DeepSeek Key
-// 请替换为您的有效API密钥，否则AI分析会失败
-// ======================
+//秘钥不要直接写在代码里
 #define DEEPSEEK_API_KEY "sk-d616e455978a47429b22d2385xxxx"
 
-// 【彻底修复】JSON 转义函数（处理所有特殊字符，中文完全兼容）
+// JSON 转义函数（确保特殊字符在JSON中正确传递）
 string escapeJson(const string &s) {
     string res;
     for (char c : s) {
@@ -58,7 +55,7 @@ string readFile(const string& path) {
     return string((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
 }
 
-// 【彻底修复】健壮的JSON解析（兼容DeepSeek所有返回格式）
+// 提取AI响应中的文本内容，兼容错误信息和不同字段位置
 string extractAIResponse(const string& json) {
     // 第一步：先检查是否有错误信息
     size_t errorPos = json.find("\"error\"");
@@ -72,7 +69,7 @@ string extractAIResponse(const string& json) {
         return "API 返回错误，请检查Key/网络";
     }
 
-    // 第二步：正常提取content（兼容多种字段位置）
+    // 第二步：寻找内容字段，兼容不同接口的字段名
     size_t contentPos = json.find("\"content\":\"");
     if (contentPos == string::npos) {
         // 兼容DeepSeek部分接口的字段名变化
@@ -111,7 +108,7 @@ string extractAIResponse(const string& json) {
     return res;
 }
 
-// 真实联网调用DeepSeek AI
+// 联网调用DeepSeek AI获取分析结果
 AIResult getAIAnalysis(const UserInfo& user, const AbilityScore& score) {
     AIResult res;
     string prompt = makePrompt(user, score);
@@ -119,7 +116,7 @@ AIResult getAIAnalysis(const UserInfo& user, const AbilityScore& score) {
     // 确保output目录存在
     system("if not exist output mkdir output");
 
-    // 【修复】使用临时文件传递JSON，避免shell转义破坏JSON格式
+    // 使用临时文件传递JSON请求，避免命令行长度限制和转义问题
     // 先构建JSON请求文件
     ofstream reqFile("output/request.json", ios::out | ios::trunc);
     reqFile << "{\"model\":\"deepseek-chat\",\"messages\":[";
@@ -127,7 +124,7 @@ AIResult getAIAnalysis(const UserInfo& user, const AbilityScore& score) {
     reqFile << "],\"temperature\":0.3,\"max_tokens\":1000}";
     reqFile.close();
 
-    // 使用 --data-binary 读取文件，避免shell二次转义
+    // 使用 --data-binary 读取文件，避免命令行转义问题
     char cmd[1024];
     snprintf(cmd, sizeof(cmd),
         "curl -s -m 30 -X POST https://api.deepseek.com/chat/completions "

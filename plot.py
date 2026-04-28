@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import locale
 
-# 【核心修复】强制设置UTF-8编码，解决Windows中文乱码
+# 设置编码和区域，确保中文显示正常
 sys.stdout.reconfigure(encoding='utf-8') # sys.stdout.reconfigure → 解决 Python 控制台打印中文乱码；
 locale.setlocale(locale.LC_ALL, 'zh_CN.UTF-8') # locale.setlocale → 解决 matplotlib 显示中文乱码；
 
@@ -54,7 +54,7 @@ angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
 scores += scores[:1]
 angles += angles[:1]
 
-# 【彻底修复】中文乱码：多字体兜底，强制渲染
+# 设置 matplotlib 参数，确保中文显示和负号显示正常
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Zen Hei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.family'] = 'sans-serif'

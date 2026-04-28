@@ -4,7 +4,7 @@
 #include <string>
 using namespace std;
 
-static int countKey(const string& text, const vector<string>& keys) {
+static int countKey(const string& text, const vector<string>& keys) {// 统计文本中包含的关键词数量，大小写不敏感
     int cnt = 0;
     string t = text;
     for (auto& c : t) c = tolower(c);
@@ -23,7 +23,7 @@ static int scoreByCount(int cnt) {
     return 0;
 }
 
-AbilityScore calculateScore(const UserInfo& u) {
+AbilityScore calculateScore(const UserInfo& u) {// 根据用户信息计算能力分数
     string all = u.skills + " " + u.project + " " + u.challenge;
     AbilityScore s{};
 
@@ -54,7 +54,7 @@ AbilityScore calculateScore(const UserInfo& u) {
     return s;
 }
 
-void printScore(const AbilityScore& s) {
+void printScore(const AbilityScore& s) {// 打印能力分数到控制台
     cout << "\n===== 能力评分（0-10）=====\n";
     cout << "专业能力：" << s.professional << endl;
     cout << "学习能力：" << s.learning << endl;
