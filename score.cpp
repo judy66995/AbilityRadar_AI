@@ -7,8 +7,91 @@
 #include <cctype>
 #include <regex>
 #include <iomanip>
+#include <windows.h>
+#include <cstdio>
+#include <sstream>
+#include <fstream>
 
 using namespace std;
+
+static string utf8_to_ansi(const string& utf8) {
+    if (utf8.empty()) return {};
+    int wide_size = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(), nullptr, 0);
+    if (wide_size <= 0) return {};
+    wstring wide(wide_size, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(), &wide[0], wide_size);
+
+    int ansi_size = WideCharToMultiByte(CP_ACP, 0, wide.data(), wide_size, nullptr, 0, nullptr, nullptr);
+    if (ansi_size <= 0) return {};
+    string ansi(ansi_size, 0);
+    WideCharToMultiByte(CP_ACP, 0, wide.data(), wide_size, &ansi[0], ansi_size, nullptr, nullptr);
+    return ansi;
+}
+
+static string escapeCommandArg(const string& text) {
+    string escaped;
+    for (char c : text) {
+        if (c == '"') {
+            escaped += "\\\"";
+        } else {
+            escaped += c;
+        }
+    }
+    return escaped;
+}
+
+static bool runPythonSemanticModel(const string& text, AbilityScore& s) {
+    if (text.empty()) {
+        return false;
+    }
+
+    CreateDirectoryA("output", nullptr);
+    const string tempPath = "output/semantic_input.txt";
+
+    ofstream outFile(tempPath, ios::out | ios::trunc);
+    if (!outFile.is_open()) {
+        return false;
+    }
+    outFile << text;
+    outFile.close();
+
+    string cmd = "python semantic_score.py --file " + tempPath;
+    string ansiCmd = utf8_to_ansi(cmd);
+    if (ansiCmd.empty()) {
+        return false;
+    }
+
+    FILE* pipe = _popen(ansiCmd.c_str(), "r");
+    if (!pipe) {
+        return false;
+    }
+
+    char buffer[512];
+    string output;
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        output += buffer;
+    }
+    _pclose(pipe);
+
+    istringstream iss(output);
+    vector<float> values;
+    float value;
+    while (iss >> value) {
+        values.push_back(value);
+    }
+    if (values.size() != 6) {
+        return false;
+    }
+
+    s.professional = static_cast<int>(values[0] + 0.5f);
+    s.learning = static_cast<int>(values[1] + 0.5f);
+    s.project = static_cast<int>(values[2] + 0.5f);
+    s.teamwork = static_cast<int>(values[3] + 0.5f);
+    s.pressure = static_cast<int>(values[4] + 0.5f);
+    s.innovation = static_cast<int>(values[5] + 0.5f);
+    s.explanations.clear();
+    return true;
+}
 
 // 关键词权重结构
 struct KeywordWeight {
@@ -125,26 +208,27 @@ static ScoreExplanation calculateDimensionScore(const string& text, const string
 AbilityScore calculateScore(const UserInfo& u) {// 根据用户信息计算能力分数
     string all = u.skills + " " + u.project + " " + u.challenge;
     AbilityScore s{};
-    
-    // 计算各维度得分
+
+    if (runPythonSemanticModel(all, s)) {
+        return s;
+    }
+
+    // 如果模型调用失败，则继续使用本地规则评分
     auto profExp = calculateDimensionScore(all, "professional");
     auto learnExp = calculateDimensionScore(all, "learning");
     auto projExp = calculateDimensionScore(all, "project");
     auto teamExp = calculateDimensionScore(all, "teamwork");
     auto pressExp = calculateDimensionScore(all, "pressure");
     auto innovExp = calculateDimensionScore(all, "innovation");
-    
-    // 赋值给结构体
+
     s.professional = profExp.score;
     s.learning = learnExp.score;
     s.project = projExp.score;
     s.teamwork = teamExp.score;
     s.pressure = pressExp.score;
     s.innovation = innovExp.score;
-    
-    // 保存详细解释
     s.explanations = {profExp, learnExp, projExp, teamExp, pressExp, innovExp};
-    
+
     return s;
 }
 
