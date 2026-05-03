@@ -9,7 +9,7 @@
 using namespace std;
 
 //秘钥不要直接写在代码里
-#define DEEPSEEK_API_KEY "sk-d616e455978a47429b22d2385xxxxx"
+#define DEEPSEEK_API_KEY "sk-d616e455978a47429b22d2385622d3de"
 
 // JSON 转义函数（确保特殊字符在JSON中正确传递）
 string escapeJson(const string &s) {

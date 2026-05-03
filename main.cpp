@@ -15,6 +15,7 @@ int main() {
     UserInfo user = inputUserInfo();// 输入用户信息
     AbilityScore score = calculateScore(user);// 计算能力分数
     printScore(score);// 打印能力分数
+    printDetailedScore(score);// 打印详细评分分析
 
     generateRadar(user, score);  // 生成雷达图
     saveReport(score);// 保存能力评估报告

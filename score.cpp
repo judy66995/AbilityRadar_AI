@@ -2,55 +2,149 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <map>
+#include <algorithm>
+#include <cctype>
+#include <regex>
+#include <iomanip>
+
 using namespace std;
 
-static int countKey(const string& text, const vector<string>& keys) {// 统计文本中包含的关键词数量，大小写不敏感
-    int cnt = 0;
-    string t = text;
-    for (auto& c : t) c = tolower(c);
-    for (auto k : keys) {
-        string lk = k;
-        for (auto& c : lk) c = tolower(c);
-        if (t.find(lk) != string::npos) cnt++;
-    }
-    return cnt;
+// 关键词权重结构
+struct KeywordWeight {
+    string keyword;
+    double weight;
+    string category;  // 程度词、时间词、专业词等
+};
+
+// 维度关键词数据库
+static map<string, vector<KeywordWeight>> dimensionKeywords = {
+    {"professional", {
+        {"精通", 3.0, "level"}, {"熟练", 2.5, "level"}, {"掌握", 2.0, "level"}, {"熟悉", 1.5, "level"}, {"了解", 1.0, "level"}, {"入门", 0.5, "level"},
+        {"10年", 3.0, "experience"}, {"5年", 2.5, "experience"}, {"3年", 2.0, "experience"}, {"2年", 1.5, "experience"}, {"1年", 1.0, "experience"},
+        {"C++", 2.5, "skill"}, {"Python", 2.5, "skill"}, {"Java", 2.5, "skill"}, {"算法", 2.0, "skill"}, {"数据结构", 2.0, "skill"}, 
+        {"数据库", 1.8, "skill"}, {"编程", 1.5, "skill"}, {"开发", 1.5, "skill"}, {"专业", 1.2, "skill"}
+    }},
+    {"learning", {
+        {"自学", 2.5, "action"}, {"主动学习", 2.5, "action"}, {"持续学习", 2.5, "action"}, {"研究", 2.0, "action"}, {"探索", 2.0, "action"},
+        {"掌握新技术", 2.5, "achievement"}, {"学习新知识", 2.0, "achievement"}, {"提升技能", 2.0, "achievement"}, {"进修", 1.8, "achievement"},
+        {"快速适应", 1.5, "quality"}, {"学习能力强", 1.5, "quality"}
+    }},
+    {"project", {
+        {"独立完成项目", 3.0, "scale"}, {"带领团队项目", 3.0, "scale"}, {"大型项目", 2.5, "scale"}, {"复杂项目", 2.5, "scale"}, {"项目", 1.5, "scale"},
+        {"从零搭建", 2.5, "complexity"}, {"架构设计", 2.5, "complexity"}, {"系统开发", 2.0, "complexity"}, {"功能实现", 1.8, "complexity"}, {"开发", 1.2, "complexity"},
+        {"部署上线", 2.0, "deployment"}, {"生产环境", 1.8, "deployment"}, {"用户使用", 1.5, "deployment"}
+    }},
+    {"teamwork", {
+        {"团队协作", 2.5, "skill"}, {"跨部门沟通", 2.5, "skill"}, {"项目协调", 2.0, "skill"}, {"配合默契", 2.0, "skill"},
+        {"带领团队", 3.0, "leadership"}, {"指导新人", 2.5, "leadership"}, {"培训同事", 2.0, "leadership"}, {"团队", 1.5, "skill"},
+        {"解决冲突", 2.0, "conflict"}, {"调解分歧", 1.8, "conflict"}, {"沟通", 1.2, "skill"}
+    }},
+    {"pressure", {
+        {"高压力环境", 2.5, "environment"}, {"紧急任务", 2.0, "environment"}, {"deadline", 2.0, "environment"}, {"高压力", 2.5, "environment"}, {"压力", 1.5, "environment"},
+        {"坚持不懈", 2.5, "quality"}, {"责任心强", 2.0, "quality"}, {"按时交付", 2.0, "quality"}, {"克服困难", 2.0, "quality"},
+        {"独立解决问题", 1.8, "problem"}, {"故障排查", 1.8, "problem"}, {"执行", 1.2, "quality"}
+    }},
+    {"innovation", {
+        {"创新设计", 3.0, "creation"}, {"技术创新", 2.5, "creation"}, {"优化方案", 2.5, "creation"}, {"改进流程", 2.0, "creation"},
+        {"创意想法", 2.0, "idea"}, {"新思路", 1.8, "idea"}, {"突破传统", 1.8, "idea"},
+        {"效率提升", 2.0, "result"}, {"性能优化", 2.0, "result"}, {"用户体验改善", 1.8, "result"}
+    }}
+};
+
+// 工具函数：字符串转小写
+static string toLower(const string& str) {
+    string result = str;
+    transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
 }
 
-static int scoreByCount(int cnt) {
-    if (cnt >= 5) return 10;
-    if (cnt >= 3) return 7;
-    if (cnt >= 1) return 4;
-    return 0;
+// 工具函数：计算文本相似度（改进版，支持中文）
+static double calculateSimilarity(const string& text, const string& keyword) {
+    // 对于中文，不进行大小写转换
+    const string& t = text;
+    const string& k = keyword;
+    
+    // 精确匹配
+    if (t.find(k) != string::npos) {
+        return 1.0;
+    }
+    
+    return 0.0;  // 只做精确匹配
+}
+
+// 智能评分函数
+static ScoreExplanation calculateDimensionScore(const string& text, const string& dimension) {
+    ScoreExplanation result;
+    result.dimension = dimension;
+    result.score = 0;
+    result.confidence = 0.0;
+    
+    auto it = dimensionKeywords.find(dimension);
+    if (it == dimensionKeywords.end()) {
+        return result;
+    }
+    
+    const auto& keywords = it->second;
+    double totalWeight = 0.0;
+    double matchedWeight = 0.0;
+    vector<string> matched;
+    vector<string> reasoning;
+    
+    for (const auto& kw : keywords) {
+        double similarity = calculateSimilarity(text, kw.keyword);
+        totalWeight += kw.weight;
+        
+        if (similarity > 0.0) {
+            double effectiveWeight = kw.weight * similarity;
+            matchedWeight += effectiveWeight;
+            
+            matched.push_back(kw.keyword);
+            reasoning.push_back("匹配关键词 '" + kw.keyword + "' (权重: " + to_string(kw.weight) + ")");
+        }
+    }
+    
+    // 计算得分 (0-10分)
+    if (totalWeight > 0) {
+        double scoreRatio = matchedWeight / totalWeight;
+        result.score = static_cast<int>(scoreRatio * 10.0 + 0.5);  // 四舍五入
+        result.score = max(0, min(10, result.score));  // 确保范围
+    }
+    
+    // 计算置信度
+    if (!matched.empty()) {
+        result.confidence = min(1.0, matched.size() / 3.0);  // 匹配越多置信度越高
+    }
+    
+    result.matchedKeywords = matched;
+    result.reasoning = reasoning;
+    
+    return result;
 }
 
 AbilityScore calculateScore(const UserInfo& u) {// 根据用户信息计算能力分数
     string all = u.skills + " " + u.project + " " + u.challenge;
     AbilityScore s{};
-
-    s.professional = scoreByCount(countKey(all, {
-        "编程", "算法", "开发", "C++", "Python", "数据结构", "数据库", "专业"
-    }));
-
-    s.learning = scoreByCount(countKey(all, {
-        "自学", "学习", "掌握", "研究", "提升", "新知识", "主动学习"
-    }));
-
-    s.project = scoreByCount(countKey(all, {
-        "项目", "开发", "实现", "部署", "实战", "完成", "搭建"
-    }));
-
-    s.teamwork = scoreByCount(countKey(all, {
-        "团队", "协作", "沟通", "配合", "合作", "小组"
-    }));
-
-    s.pressure = scoreByCount(countKey(all, {
-        "压力", "按时", "执行", "负责", "解决", "坚持", "目标"
-    }));
-
-    s.innovation = scoreByCount(countKey(all, {
-        "创新", "优化", "改进", "设计", "创意", "效率"
-    }));
-
+    
+    // 计算各维度得分
+    auto profExp = calculateDimensionScore(all, "professional");
+    auto learnExp = calculateDimensionScore(all, "learning");
+    auto projExp = calculateDimensionScore(all, "project");
+    auto teamExp = calculateDimensionScore(all, "teamwork");
+    auto pressExp = calculateDimensionScore(all, "pressure");
+    auto innovExp = calculateDimensionScore(all, "innovation");
+    
+    // 赋值给结构体
+    s.professional = profExp.score;
+    s.learning = learnExp.score;
+    s.project = projExp.score;
+    s.teamwork = teamExp.score;
+    s.pressure = pressExp.score;
+    s.innovation = innovExp.score;
+    
+    // 保存详细解释
+    s.explanations = {profExp, learnExp, projExp, teamExp, pressExp, innovExp};
+    
     return s;
 }
 
@@ -62,4 +156,29 @@ void printScore(const AbilityScore& s) {// 打印能力分数到控制台
     cout << "团队协作：" << s.teamwork << endl;
     cout << "抗压执行：" << s.pressure << endl;
     cout << "创新思维：" << s.innovation << endl;
+}
+
+void printDetailedScore(const AbilityScore& s) {// 打印详细评分解释
+    cout << "\n===== 详细评分分析 =====\n";
+    
+    for (const auto& exp : s.explanations) {
+        cout << "\n📊 " << exp.dimension << " (得分: " << exp.score << "/10, 置信度: " << fixed << setprecision(1) << exp.confidence * 100 << "%)\n";
+        
+        if (!exp.matchedKeywords.empty()) {
+            cout << "   匹配关键词: ";
+            for (size_t i = 0; i < exp.matchedKeywords.size(); ++i) {
+                cout << exp.matchedKeywords[i];
+                if (i < exp.matchedKeywords.size() - 1) cout << ", ";
+            }
+            cout << "\n";
+            
+            cout << "   评分依据:\n";
+            for (const auto& reason : exp.reasoning) {
+                cout << "   • " << reason << "\n";
+            }
+        } else {
+            cout << "   未匹配到相关关键词\n";
+        }
+    }
+    cout << "\n💡 提示：置信度越高表示匹配度越好，评分越可靠\n";
 }
