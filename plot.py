@@ -70,7 +70,7 @@ ax.set_xticklabels(labels, fontsize=12, fontweight='medium')
 ax.set_yticks([2, 4, 6, 8, 10])
 ax.set_yticklabels(['2', '4', '6', '8', '10'], fontsize=10)
 ax.set_ylim(0, 10)
-ax.set_title(f'{username} 的能力雷达图', fontsize=16, pad=25, fontweight='bold')
+ax.set_title(f'{username}的能力雷达图', fontsize=16, pad=25, fontweight='bold')
 
 # 美化网格
 ax.grid(color='gray', linestyle='-', linewidth=0.5, alpha=0.7, zorder=1)
