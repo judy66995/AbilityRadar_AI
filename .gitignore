@@ -10,6 +10,16 @@ output/
 __pycache__/
 *.pyc
 
+# PyTorch 模型文件（体积大，不提交）
+*.pt
+*.pth
+*.onnx
+
+# Python 虚拟环境
+venv/
+.venv/
+env/
+
 # IDE
 .vs/
 *.user
