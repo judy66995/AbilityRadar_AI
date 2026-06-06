@@ -1,0 +1,16 @@
+# 编译产物
+*.exe
+*.o
+*.obj
+
+# 运行时输出
+output/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# IDE
+.vs/
+*.user
+*.suo
