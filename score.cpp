@@ -207,6 +207,10 @@ static ScoreExplanation calculateDimensionScore(const string& text, const string
 
 AbilityScore calculateScore(const UserInfo& u) {// 根据用户信息计算能力分数
     string all = u.skills + " " + u.project + " " + u.challenge;
+    // 如果有简历全文（raw_text），一并加入评分上下文
+    if (!u.raw_text.empty()) {
+        all += " " + u.raw_text;
+    }
     AbilityScore s{};
     // ★ 优先：尝试 Transformer 评分
     if (runPythonSemanticModel(all, s)) {

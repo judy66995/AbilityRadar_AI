@@ -9,7 +9,7 @@
 using namespace std;
 
 //秘钥不要直接写在代码里
-#define DEEPSEEK_API_KEY "sk-"
+#define DEEPSEEK_API_KEY "sk-0c2d3c5ab8cc480091a3a2e3ae95ad31"
 
 // JSON 转义函数（确保特殊字符在JSON中正确传递）
 string escapeJson(const string &s) {
@@ -29,23 +29,40 @@ string escapeJson(const string &s) {
 
 // 生成标准提示词
 string makePrompt(const UserInfo& u, const AbilityScore& s) {
-    char buf[4096];
-    sprintf(buf,
+    // 基础提示词
+    string prompt =
         "你是专业能力评估专家，请根据以下用户信息和6项能力分数，严格输出3部分内容：\n"
-        "1. 综合评价（100字内，简洁总结能力水平）\n"
-        "2. 未来发展趋势（80字内，判断职业发展方向）\n"
-        "3. 针对性提升建议（分3条，每条50字内，实用可落地）\n\n"
+        "1. 综合评价（150字内，结合简历具体经历评价，引用关键亮点）\n"
+        "2. 未来发展趋势（100字内，判断职业发展方向）\n"
+        "3. 针对性提升建议（分3条，每条60字内，结合具体技能短板，实用可落地）\n\n"
         "用户信息：\n"
-        "姓名：%s\n专业：%s\n技能：%s\n项目经历：%s\n挑战经历：%s\n\n"
-        "能力分数（满分10分）：\n"
-        "专业能力：%d\n学习能力：%d\n项目实践：%d\n团队协作：%d\n抗压执行：%d\n创新思维：%d\n\n"
-        "要求：语言正式、分点清晰、无多余格式、不使用Markdown。",
-        u.name.c_str(), u.major.c_str(),
-        u.skills.c_str(), u.project.c_str(), u.challenge.c_str(),
-        s.professional, s.learning, s.project,
-        s.teamwork, s.pressure, s.innovation
-    );
-    return string(buf);
+        "姓名：" + u.name + "\n"
+        "专业：" + u.major + "\n"
+        "学历：" + u.education + "\n"
+        "技能：" + u.skills + "\n"
+        "项目经历：" + u.project + "\n"
+        "挑战经历：" + u.challenge + "\n";
+
+    // 如果有简历全文，附加到提示词中
+    if (!u.raw_text.empty()) {
+        // 截取简历前3000字符，避免提示词过长
+        string resumeExcerpt = u.raw_text;
+        if (resumeExcerpt.length() > 3000) {
+            resumeExcerpt = resumeExcerpt.substr(0, 3000) + "...(截断)";
+        }
+        prompt += "\n[简历原文摘要]\n" + resumeExcerpt + "\n";
+    }
+
+    prompt += "\n能力分数（满分10分）：\n"
+        "专业能力：" + to_string(s.professional) + "\n"
+        "学习能力：" + to_string(s.learning) + "\n"
+        "项目实践：" + to_string(s.project) + "\n"
+        "团队协作：" + to_string(s.teamwork) + "\n"
+        "抗压执行：" + to_string(s.pressure) + "\n"
+        "创新思维：" + to_string(s.innovation) + "\n\n"
+        "要求：语言正式、分点清晰、结合简历具体内容给出针对性建议、不使用Markdown。";
+
+    return prompt;
 }
 
 // 读取文件内容（二进制模式，避免编码问题）
