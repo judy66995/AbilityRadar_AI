@@ -9,52 +9,63 @@
 
 1. [项目是什么](#1-项目是什么)
 2. [核心概念速览](#2-核心概念速览)
-   - [2.1 什么是“模型”](#21-什么是模型)
+   - [2.1 什么是"模型"](#21-什么是模型)
    - [2.2 线性回归 → Transformer 的进化](#22-线性回归--transformer-的进化)
 3. [系统全景架构](#3-系统全景架构)
 4. [Transformer 模型详解](#4-transformer-模型详解)
-   - [4.1 为什么叫“Transformer”](#41-为什么叫transformer)
+   - [4.1 为什么叫"Transformer"](#41-为什么叫transformer)
    - [4.2 一步一步拆解模型](#42-一步一步拆解模型)
    - [4.3 源码对照阅读指南](#43-源码对照阅读指南)
-5. [6 个能力维度说明](#5-6-个能力维度说明)
-6. [训练数据是怎么来的](#6-训练数据是怎么来的)
-7. [环境搭建与安装](#7-环境搭建与安装)
-8. [从零到跑通的完整步骤](#8-从零到跑通的完整步骤)
-9. [文件结构速查表](#9-文件结构速查表)
-10. [常见问题排查](#10-常见问题排查)
+5. [简历解析模块](#5-简历解析模块)
+   - [5.1 工作流程](#51-工作流程)
+   - [5.2 PDF 文字提取](#52-pdf-文字提取)
+   - [5.3 图片 OCR 识别](#53-图片-ocr-识别)
+   - [5.4 字段智能提取](#54-字段智能提取)
+6. [6 个能力维度说明](#6-6-个能力维度说明)
+7. [训练数据是怎么来的](#7-训练数据是怎么来的)
+8. [环境搭建与安装](#8-环境搭建与安装)
+9. [从零到跑通的完整步骤](#9-从零到跑通的完整步骤)
+10. [文件结构速查表](#10-文件结构速查表)
+11. [常见问题排查](#11-常见问题排查)
 
 ---
 
 ## 1. 项目是什么
 
-**AbilityRadar AI** 是一个“能力雷达评估系统”。它的工作流程是：
+**AbilityRadar AI** 是一个"能力雷达评估系统"。它的工作流程是：
 
 ```
-你填写个人信息    →    程序打分    →    画出雷达图    →    AI给出分析建议
-（姓名、技能、      （6个维度       （可视化图表）     （调用DeepSeek
-  项目经历等）        0~10分）                           生成评语）
+你填写个人信息     →    程序打分     →    画出雷达图     →    AI给出分析建议
+或上传简历文件     →   (6个维度       →   (可视化图表)    →   (调用DeepSeek
+(PDF/图片)             0~10分)                               生成评语)
 ```
 
-用一句话概括：**输入一段描述你工程经历的文本，输出 6 个维度的能力分数。**
+用一句话概括：**输入一段描述你工程经历的文本（或直接上传简历），输出 6 个维度的能力分数 + 雷达图 + AI 建议。**
+
+### 两种使用方式
+
+| 方式 | 说明 | 适合场景 |
+|------|------|---------|
+| **[1] 手动输入** | 控制台逐字段填写 8 项信息 | 快速测试、没有简历文件时 |
+| **[2] 简历上传** | 直接上传 PDF/图片简历 | 有现成简历、希望自动提取 |
 
 ---
 
 ## 2. 核心概念速览
 
-### 2.1 什么是“模型”
+### 2.1 什么是"模型"
 
-在 AI 的语境下，“模型”就是一个 **函数**：
+在 AI 的语境下，"模型"就是一个 **函数**：
 
 ```
 输入文本  ──→  [  模型  ]  ──→  6个分数
               (一堆数学运算)
 ```
 
-- **训练**：给模型看大量“文本→分数”的例对，让它自己调整内部参数
+- **训练**：给模型看大量"文本→分数"的例对，让它自己调整内部参数
 - **推理**：把新文本输入训练好的模型，让模型输出分数
 
-就像教小孩认动物——先给他看100张猫狗图片并告诉他答案（训练），
-之后他就能自己判断新图片了（推理）。
+就像教小孩认动物——先给他看100张猫狗图片并告诉他答案（训练），之后他就能自己判断新图片了（推理）。
 
 ### 2.2 线性回归 → Transformer 的进化
 
@@ -63,7 +74,7 @@
 | 原理 | 词袋向量 × 权重 + 偏置 | 多层自注意力 + 前馈网络 |
 | 参数量 | ~12,000 | ~80,000 |
 | 上下文理解 | ❌ 不关心词序 | ✅ 每个词都与其他词交互 |
-| 对“精通C++”和“用过C++” | 看到“C++”就加分，无法区分 | 结合上下文区别对待 |
+| 对"精通C++"和"用过C++" | 看到"C++"就加分，无法区分 | 结合上下文区别对待 |
 | 模型文件 | `output/semantic_model.json` | `output/transformer_model.pt` |
 
 **关键区别举例**：
@@ -73,9 +84,8 @@
 文本B："简单了解过C++和Python，正在入门学习"
 ```
 
-旧模型看到两个文本都有“C++”“Python”，给出相似分数。
-新模型会通过上下文（“精通”vs“了解”、“5年”vs“入门”）
-理解两者的能力差距，给出完全不同的分数。
+旧模型看到两个文本都有"C++""Python"，给出相似分数。
+新模型会通过上下文（"精通"vs"了解"、"5年"vs"入门"）理解两者的能力差距，给出完全不同的分数。
 
 ---
 
@@ -90,32 +100,38 @@
 │  │ main.cpp │    │  score.cpp   │    │    ai.cpp            │   │
 │  │ (主程序)  │───→│  (评分引擎)   │    │   (AI分析)          │   │
 │  │          │    │              │    │                     │   │
-│  │ 收集用户  │    │ 优先调用     │    │ 调用 DeepSeek API  │   │
-│  │ 输入信息  │    │ Transformer │    │ 生成综合评价+建议   │   │
-│  │          │    │ 失败则回退   │    │                     │   │
-│  └──────────┘    │ 到规则评分   │    └─────────────────────┘   │
-│                  │              │                               │
-│                  └──────┬───────┘                               │
-│                         │                                       │
-│                         │ _popen 调用                           │
-│                         ▼                                       │
-│              ┌──────────────────────┐                          │
-│              │  semantic_score.py   │                          │
-│              │  (Python 桥接脚本)    │                          │
-│              │                      │                          │
-│              │  加载模型 → 推理 →   │                          │
-│              │  输出6个分数          │                          │
-│              └──────────┬───────────┘                          │
-│                         │                                       │
-│                         ▼                                       │
-│              ┌──────────────────────┐                          │
-│              │ transformer_model.py │                          │
-│              │ (Transformer 模型)   │                          │
-│              │                      │                          │
-│              │ Transformer Encoder  │                          │
-│              │ → Mean Pooling       │                          │
-│              │ → Linear Head → 6分  │                          │
-│              └──────────────────────┘                          │
+│  │ ① 菜单选 │    │ 优先调用     │    │ 调用 DeepSeek API  │   │
+│  │   择输入 │    │ Transformer │    │ 生成综合评价+建议   │   │
+│  │   方式   │    │ 失败则回退   │    │ ★ 含简历全文       │   │
+│  │          │    │ 到规则评分   │    │                     │   │
+│  │ ② 手动   │    │              │    └─────────────────────┘   │
+│  │   输入    │    └──────┬───────┘                               │
+│  │   或      │           │                                       │
+│  │ ③ 简历   │           │ _popen 调用                           │
+│  │   上传    │           ▼                                       │
+│  └─────┬─────┘  ┌──────────────────────┐                        │
+│        │        │  semantic_score.py   │                        │
+│        │        │  (Python 桥接脚本)    │                        │
+│        │        │                      │                        │
+│        │        │  加载模型 → 推理 →   │                        │
+│        │        │  输出6个分数          │                        │
+│        │        └──────────┬───────────┘                        │
+│        │                   │                                     │
+│        │                   ▼                                     │
+│        │        ┌──────────────────────┐                        │
+│        │        │ transformer_model.py │                        │
+│        │        │ (Transformer 模型)   │                        │
+│        │        └──────────────────────┘                        │
+│        │                                                         │
+│        │        ┌──────────────────────┐                        │
+│        └───────→│  resume_parser.py    │                        │
+│   (_popen)      │  (简历解析引擎)       │                        │
+│                 │                      │                        │
+│                 │ PDF: pdfminer.six    │                        │
+│                 │      → PyMuPDF 回退  │                        │
+│                 │ 图片: PaddleOCR      │                        │
+│                 │ → 智能字段提取       │                        │
+│                 └──────────────────────┘                        │
 │                                                                 │
 │  ┌──────────┐    ┌──────────────┐                              │
 │  │ plot.py  │    │ file_utils   │                              │
@@ -125,38 +141,44 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 数据流（一条用户输入从开始到结束）
+### 数据流（两种模式）
+
+#### 模式一：手动输入
 
 ```
-1. main.cpp 调用 inputUserInfo()
-   → 用户在控制台输入：姓名、专业、技能描述、项目经历、挑战经历
+1. main.cpp 调用 inputModeMenu() → 用户选 [1]
+2. inputUserInfo() → 控制台逐行输入 8 个字段
+3. calculateScore(user) → Transformer 评分
+4. generateRadar(user, score) → 雷达图
+5. getAIAnalysis(user, score) → AI 分析
+```
 
-2. main.cpp 调用 calculateScore(user)
-   → score.cpp 把“技能+项目+挑战”拼接成一段完整文本
-   → 写进 output/semantic_input.txt
-   → _popen("python semantic_score.py --file output/semantic_input.txt")
-   → 读取 stdout 的 6 个分数
+#### 模式二：简历上传
 
-3. main.cpp 调用 generateRadar(user, score)
-   → radar.cpp 把姓名和分数写进 output/radar_args.txt
-   → system("python plot.py") 生成 output/radar.png
-
-4. main.cpp 调用 getAIAnalysis(user, score)
-   → ai.cpp 构建提示词，调用 DeepSeek API
-   → 返回 综合评价 + 发展趋势 + 提升建议
-   → 保存到 output/ai_analysis.txt
+```
+1. main.cpp 调用 inputModeMenu() → 用户选 [2]
+2. 用户输入简历文件路径
+3. parseResumeFile(path) → Python resume_parser.py
+   ├── PDF: pdfminer.six 提取文字
+   ├── 图片: PaddleOCR 识别文字
+   └── parse_resume_fields() → 智能提取 9 个字段
+4. 显示提取结果 → 用户确认/拒绝/修改
+5. resumeToUserInfo(resume) → UserInfo
+6. calculateScore(user) → Transformer 评分（含简历全文）
+7. generateRadar(user, score) → 雷达图
+8. getAIAnalysis(user, score) → AI 分析（含简历全文）
 ```
 
 ---
 
 ## 4. Transformer 模型详解
 
-### 4.1 为什么叫“Transformer”
+### 4.1 为什么叫"Transformer"
 
-**Transformer** 是 Google 在 2017 年论文 *“Attention Is All You Need”* 中提出的架构。
+**Transformer** 是 Google 在 2017 年论文 *"Attention Is All You Need"* 中提出的架构。
 它彻底改变了自然语言处理（NLP）领域——ChatGPT、DeepSeek 等大模型的核心都是 Transformer。
 
-名称的由来：它 **把输入序列“变换”（transform）** 成输出序列，而且完全用“注意力机制”替代了旧的循环结构。
+名称的由来：它 **把输入序列"变换"（transform）** 成输出序列，而且完全用"注意力机制"替代了旧的循环结构。
 
 ### 4.2 一步一步拆解模型
 
@@ -184,7 +206,7 @@
          │
          ▼
 ┌─────────────────────┐
-│ Step 3: Positional  │  给每个位置加“位置指纹”
+│ Step 3: Positional  │  给每个位置加"位置指纹"
 │ Encoding            │
 │ (位置编码)          │  位置0: [sin(0), cos(0), ...]
 │                     │  位置1: [sin(1), cos(1), ...]
@@ -200,11 +222,11 @@
 │ (编码器)            │  每层包括：
 │                     │
 │ ┌─────────────────┐ │
-│ │ 4a. 多头自注意力 │ │  每个字符“看”所有其他字符
-│ │                  │ │  计算“谁对我重要”
+│ │ 4a. 多头自注意力 │ │  每个字符"看"所有其他字符
+│ │                  │ │  计算"谁对我重要"
 │ │ "精"看整个句子:  │ │
-│ │   "通" → 重要0.8 │ │  注意力权重矩阵：
-│ │   "验" → 重要0.1 │ │  [16, 256, 256]
+│ │   "通" → 重要0.8 │ │  注意力权重矩阵
+│ │   "验" → 重要0.1 │ │
 │ │   "，" → 重要0.0 │ │
 │ └────────┬────────┘ │
 │          │          │
@@ -263,22 +285,79 @@
 
 ---
 
-## 5. 6 个能力维度说明
+## 5. 简历解析模块
+
+### 5.1 工作流程
+
+这是本次升级新增的核心功能。整个解析过程在 `resume_parser.py` 中完成：
+
+```
+简历文件（PDF/图片）
+    │
+    ▼
+┌─────────────────────────────┐
+│ Step 1: 文字提取             │
+│                             │
+│ PDF → pdfminer.six (主力)   │
+│     → PyMuPDF (回退)        │
+│ 图片 → PaddleOCR (主力)     │
+└──────────┬──────────────────┘
+           │
+           ▼
+┌─────────────────────────────┐
+│ Step 2: 智能字段提取         │
+│                             │
+│ 姓名 ← 多模式匹配           │
+│ 性别 ← "男/女" 关键词       │
+│ 年龄 ← 出生日期推算         │
+│ 学历 ← 括号+关键词匹配      │
+│ 专业 ← "XX专业"/求职意向    │
+│ 技能 ← ~80个关键词库匹配    │
+│ 项目经历 ← 章节提取器       │
+│ 自我评价 ← 章节提取器       │
+└──────────┬──────────────────┘
+           │
+           ▼
+   结构化 JSON 输出
+   → C++ 读取并填充 UserInfo
+```
+
+### 5.2 PDF 文字提取
+
+PDF 内部有两种情况：
+- **电子版 PDF**（文字可直接提取）：用 pdfminer.six（对中文 CJK 字体支持最好）
+- **扫描版 PDF**（实质是图片）：需要先转成图片，再用 OCR 识别
+
+我们的实现采用 **双引擎回退**：pdfminer.six 优先（CJK 兼容性好），失败则用 PyMuPDF。
+
+### 5.3 图片 OCR 识别
+
+图片格式简历使用 **PaddleOCR**（百度开源），中文识别准确率在开源方案中最高。
+
+> PaddleOCR 首次使用会自动下载模型文件（约 10MB），之后缓存。
+
+### 5.4 字段智能提取
+
+使用正则表达式 + 章节提取器从简历全文中自动识别各个字段。提取策略按优先级递减排列多条规则，确保对各种简历格式的兼容性。
+
+---
+
+## 6. 6 个能力维度说明
 
 | 序号 | 维度名 | 评估什么 | 体现方式（在文本中） |
 |------|--------|---------|-------------------|
-| 0 | **专业能力** | 技术硬实力、工具掌握程度 | “精通C++”“5年经验”“算法优化” |
-| 1 | **学习能力** | 学习新技术、自我提升 | “自学”“快速上手”“持续学习” |
-| 2 | **项目实践** | 项目经验、工程落地 | “从零搭建”“架构设计”“部署上线” |
-| 3 | **团队协作** | 沟通、领导力、合作 | “带领团队”“跨部门”“指导新人” |
-| 4 | **抗压执行** | 压力下表现、责任心 | “高压力”“按时交付”“紧急修复” |
-| 5 | **创新思维** | 创造力、优化改进 | “创新方案”“性能优化3倍”“技术专利” |
+| 0 | **专业能力** | 技术硬实力、工具掌握程度 | "精通C++""5年经验""算法优化" |
+| 1 | **学习能力** | 学习新技术、自我提升 | "自学""快速上手""持续学习" |
+| 2 | **项目实践** | 项目经验、工程落地 | "从零搭建""架构设计""部署上线" |
+| 3 | **团队协作** | 沟通、领导力、合作 | "带领团队""跨部门""指导新人" |
+| 4 | **抗压执行** | 压力下表现、责任心 | "高压力""按时交付""紧急修复" |
+| 5 | **创新思维** | 创造力、优化改进 | "创新方案""性能优化3倍""技术专利" |
 
 每个维度分数范围 **0–10**，越高越好。
 
 ---
 
-## 6. 训练数据是怎么来的
+## 7. 训练数据是怎么来的
 
 训练深度学习模型通常需要**大量标注数据**。
 我们的旧模型只有 10 条人工标注样本，对线性回归够用，但对 Transformer 远远不够。
@@ -319,21 +398,11 @@
                      ▼
 ┌───────────────────────────────────────────────┐
 │  生成 800 条不同的合成样本                      │
-│                                               │
-│  样例：                                       │
-│  文本: "作为一名资深技术人员，精通C++与Python  │
-│         ，代码功底扎实。同时，自学能力极强，    │
-│         能快速掌握新技术栈。此外，曾独立从零    │
-│         搭建一套完整的电商系统并上线运营。"     │
-│                                               │
-│  标签: [8.0, 4.5, 5.0, 0.0, 1.0, 1.0]       │
-│        (专业很高, 学习好, 项目好, 其余偏低)    │
 └───────────────────────────────────────────────┘
 ```
 
 ### 为什么合成数据可行
 
-虽然合成数据不如真实数据精确，但它有几个优势：
 1. **覆盖全面**：6 个维度的各种组合都会出现
 2. **标签一致**：同一短语始终贡献相同的分数，模型学到的是稳定的模式
 3. **数量充足**：800 条足以训练一个小型 Transformer
@@ -341,16 +410,20 @@
 
 ---
 
-## 7. 环境搭建与安装
+## 8. 环境搭建与安装
 
 ### 你需要安装什么
 
 | 软件 | 用途 | 版本要求 |
 |------|------|---------|
-| **Python** | 运行模型和雷达图 | ≥ 3.8 |
+| **Python** | 运行模型、雷达图和简历解析 | ≥ 3.8 |
 | **PyTorch** | Transformer 深度学习框架 | ≥ 2.0（CPU版即可） |
 | **NumPy** | 数值计算 | ≥ 1.20 |
 | **Matplotlib** | 画雷达图 | ≥ 3.0 |
+| **pdfminer.six** | PDF 简历文字提取（主力，CJK支持好） | 最新版 |
+| **PyMuPDF** | PDF 文字提取（备选回退） | 最新版 |
+| **PaddleOCR** | 图片简历文字识别 | 最新版 |
+| **PaddlePaddle** | PaddleOCR 运行框架 | ≥ 2.5（CPU版即可） |
 | **g++** (MinGW) | 编译 C++ 代码 | 支持 C++17 |
 | **curl** | 调用 DeepSeek API | 任意版本 |
 
@@ -367,50 +440,54 @@ pip install torch
 # 3. 安装其他依赖
 pip install numpy matplotlib
 
-# 4. 确认安装成功
-python -c "import torch; print(f'PyTorch {torch.__version__} 安装成功!')"
-# 应该打印：PyTorch 2.x.x 安装成功!
+# 4. 安装 PDF 解析库（二选一或两个都装）
+pip install pdfminer.six     # 主力 PDF 引擎（推荐）
+pip install PyMuPDF          # 备选 PDF 引擎
 
-# 5. 确认 g++ 可用（编译 C++）
+# 5. 安装图片 OCR 引擎（可选：仅当需要识别图片简历时）
+pip install paddlepaddle     # 约 300MB，CPU版
+pip install paddleocr
+
+# 6. 确认安装成功
+python -c "import torch; print(f'PyTorch {torch.__version__}')"
+python -c "from pdfminer.high_level import extract_text; print('pdfminer OK')"
+
+# 7. 确认 g++ 可用（编译 C++）
 g++ --version
-# 如果没有：安装 MinGW-w64 或使用 Visual Studio 的 MSVC
 ```
 
 ### 关于 CUDA / GPU
 
 **不需要 GPU！** 我们这个模型很小（~8万参数），CPU 推理只需几毫秒。
-如果你恰好有 NVIDIA 显卡且想用 GPU 训练（会更快），安装：
+如果你恰好有 NVIDIA 显卡且想用 GPU 训练（会更快）：
 
 ```powershell
-pip install torch  --index-url https://download.pytorch.org/whl/cu121
+pip install torch --index-url https://download.pytorch.org/whl/cu121
 ```
 
 ---
 
-## 8. 从零到跑通的完整步骤
+## 9. 从零到跑通的完整步骤
 
 ### Step 1：编译 C++ 主程序
 
 ```powershell
 # 在项目根目录
 g++ -fdiagnostics-color=always -g ^
-    main.cpp input.cpp score.cpp radar.cpp file_utils.cpp ai.cpp ^
+    main.cpp input.cpp score.cpp radar.cpp file_utils.cpp ai.cpp resume_parser.cpp ^
     -o radar.exe -std=c++17
 
-# 编译成功后，目录下会生成 radar.exe
+# 或者在 VS Code 中按 Ctrl+Shift+B
 ```
 
 ### Step 2：首次训练 Transformer 模型
 
 ```powershell
-# 方式A：直接运行训练（会自动生成模型文件）
+# 直接运行训练
 python transformer_model.py --train
 
-# 方式B：训练的同时测试一条文本
+# 或训练并测试一条文本
 python transformer_model.py "精通C++和Python，5年开发经验"
-
-# 方式C：如果之前训练过，直接预测
-python transformer_model.py "自学能力极强，善于沟通协作"
 ```
 
 首次训练输出示例：
@@ -423,32 +500,17 @@ python transformer_model.py "自学能力极强，善于沟通协作"
 [1/6] 生成 800 条合成训练数据...
   ✓ 已生成 800 条样本
 
-  ── 样例数据（前3条）──
-  样本1: 作为一名资深技术人员，精通C++与Python...
-  标签:   专业能力=4.0 | 学习能力=0.5 | 项目实践=1.0 | ...
-
 [2/6] 构建字符词表...
   ✓ 词表大小: 1234 个字符
 
-[3/6] 划分训练集和验证集...
-  ✓ 训练集: 720 条, 验证集: 80 条
-
 [4/6] 初始化 Transformer 模型...
   ✓ 模型参数量: 83,270
-  ✓ 嵌入维度: 64
-  ✓ 注意力头数: 4
-  ✓ 编码器层数: 2
 
 [5/6] 开始训练 (80 轮)...
-  Epoch  10/80 | 训练Loss: 2.3456 | 验证Loss: 2.5678 | LR: 0.000987
-  Epoch  20/80 | 训练Loss: 1.2345 | 验证Loss: 1.4567 | LR: 0.000876
+  Epoch  10/80 | 训练Loss: 2.3456 | 验证Loss: 2.5678
   ...
-  Epoch  80/80 | 训练Loss: 0.3456 | 验证Loss: 0.6789 | LR: 0.000012
-  ✓ 训练完成！最佳验证 Loss: 0.5678
-
-[6/6] 保存模型和词表...
-  ✓ 模型已保存到: output/transformer_model.pt
-  ✓ 词表已保存到: output/transformer_vocab.json
+  Epoch  80/80 | 训练Loss: 0.3456 | 验证Loss: 0.6789
+  ✓ 训练完成！
 
 ============================================================
   ✅ 训练全部完成！
@@ -458,44 +520,32 @@ python transformer_model.py "自学能力极强，善于沟通协作"
 ### Step 3：运行完整程序
 
 ```powershell
-# 运行 C++ 主程序
 .\radar.exe
 ```
 
-然后按提示输入个人信息，程序会依次输出：
+运行后显示菜单：
 
 ```
 ===== AbilityRadar_AI 能力评估系统 =====
 
-请输入姓名：张三
-请输入性别：男
-请输入年龄：25
-请输入专业/职业：软件工程
-请输入学历：本科
-请输入技能描述：精通C++和Python，5年开发经验，掌握数据结构和算法
-请输入项目经历：曾独立从零搭建电商系统并上线运营
-请输入挑战与成长：在高压力环境下保障系统稳定运行，主动学习新技术
-
-===== 能力评分（0-10）=====
-专业能力：8
-学习能力：6
-项目实践：7
-团队协作：3
-抗压执行：6
-创新思维：4
-
-===== 详细评分分析 =====
-（如果是 Transformer 评分则显示简洁结果，
- 如果是规则回退则显示匹配关键词详情）
-
-                       🧠 AI 深度分析
-=====================================
-（DeepSeek 生成的综合评价、发展趋势、提升建议）
-
-✅ 全部完成！
-📊 雷达图：output/radar.png
-📄 AI报告：output/ai_analysis.txt
+请选择输入方式：
+  [1] 手动输入信息
+  [2] 上传简历文件（PDF / 图片）
+  [0] 退出程序
+请输入选项（0/1/2）：
 ```
+
+#### 选择 [1] 手动输入
+
+按提示输入 8 个字段，然后自动评分 → 雷达图 → AI 分析。
+
+#### 选择 [2] 简历上传
+
+输入简历文件路径（如 `C:\Users\JC\Desktop\简历.pdf`），程序自动：
+1. 解析 PDF/图片 → 提取文字
+2. 智能识别姓名、学历、技能、项目经历等
+3. 显示提取结果供确认
+4. 确认后开始评分 → 雷达图 → AI 分析
 
 ### 三步流程图解
 
@@ -506,8 +556,9 @@ python transformer_model.py "自学能力极强，善于沟通协作"
   │ g++ ...  │ ───→ │ python       │ ───→ │ .\radar  │
   │ → radar  │      │ transformer  │      │ .exe     │
   │   .exe   │      │ _model.py    │      │          │
-  │          │      │ --train      │      │ 输入信息  │
-  └──────────┘      └──────────────┘      └──────────┘
+  │          │      │ --train      │      │ [1]手动  │
+  └──────────┘      └──────────────┘      │ [2]简历  │
+                                          └──────────┘
                                                │
                                      ┌─────────┴─────────┐
                                      ▼                   ▼
@@ -517,54 +568,58 @@ python transformer_model.py "自学能力极强，善于沟通协作"
 
 ---
 
-## 9. 文件结构速查表
+## 10. 文件结构速查表
 
 ```
 AbilityRadar_AI/
 │
 ├── C++ 源码（主程序）────────────────────────────
-│   ├── main.cpp              # 程序入口，串联所有模块
-│   ├── input.cpp / .h        # 用户信息输入（控制台交互）
+│   ├── main.cpp              # 程序入口，菜单 + 串联所有模块
+│   ├── input.cpp / .h        # 用户输入（菜单选择 + 手动输入 + 简历转换）
+│   ├── resume_parser.cpp / .h# ★ 简历解析桥接（C++ → Python）
 │   ├── score.cpp / .h        # 评分引擎（调用Python模型，失败回退规则评分）
 │   ├── radar.cpp / .h        # 雷达图生成（调用 Python plot.py）
 │   ├── file_utils.cpp / .h   # 报告文件保存
-│   └── ai.cpp / .h           # DeepSeek AI 分析（API调用+结果解析）
+│   └── ai.cpp / .h           # DeepSeek AI 分析（API调用+结果解析，含简历全文）
 │
 ├── Python 脚本 ──────────────────────────────────
 │   ├── transformer_model.py  # ★ 核心：Transformer模型定义+训练+预测
-│   ├── semantic_score.py     # ★ C++↔Python 桥梁脚本（推理入口）
+│   ├── semantic_score.py     # ★ C++↔Python 桥梁脚本（评分推理入口）
+│   ├── resume_parser.py      # ★ 简历解析引擎（PDF/图片→结构化字段）
 │   ├── semantic_model.py     # （已废弃）旧版线性回归模型
 │   └── plot.py               # 雷达图绘制（Matplotlib）
 │
-├── 输出文件（运行时生成，.gitignore已忽略）────────
+├── 文档 ─────────────────────────────────────────
+│   ├── ABILITYRADAR_AI.md    # ★ 本文档（面向初学者）
+│   └── CODE_GUIDE.md         # 代码阅读指南（面向开发者）
+│
+├── 输出文件（运行时生成）────────────────────────
 │   └── output/
-│       ├── transformer_model.pt    # 训练好的 PyTorch 模型权重
-│       ├── transformer_vocab.json  # 字符词表+模型配置
+│       ├── transformer_model.pt    # 训练好的 PyTorch 模型权重（~330KB）
+│       ├── transformer_vocab.json  # 字符词表+模型配置（~50KB）
 │       ├── semantic_input.txt      # C++ 传给 Python 的临时文本
 │       ├── radar_args.txt          # 雷达图参数
 │       ├── radar.png               # 雷达图（最终产物）
+│       ├── report.txt              # 评分报告
 │       ├── ai_analysis.txt         # AI分析报告（最终产物）
 │       ├── request.json            # API请求临时文件
-│       └── temp_response.json      # API响应临时文件
+│       ├── temp_response.json      # API响应临时文件
+│       └── resume_debug.json       # 简历解析调试日志
 │
 ├── 配置文件 ─────────────────────────────────────
 │   ├── .gitignore             # Git 忽略规则
-│   ├── .vscode/tasks.json     # VS Code 编译任务配置
-│   └── ABILITYRADAR_AI.md     # ★ 本文档
+│   └── .vscode/tasks.json     # VS Code 编译任务配置
 │
-└── 编译产物（.gitignore已忽略）───────────────────
+└── 编译产物 ─────────────────────────────────────
     └── radar.exe              # C++ 编译好的可执行文件
 ```
 
 ---
 
-## 10. 常见问题排查
+## 11. 常见问题排查
 
 ### Q1: 运行时报 `ImportError: No module named 'torch'`
 
-**原因**：PyTorch 未安装或安装失败。
-
-**解决**：
 ```powershell
 pip install torch
 python -c "import torch; print(torch.__version__)"
@@ -572,53 +627,61 @@ python -c "import torch; print(torch.__version__)"
 
 ### Q2: 模型训练很慢 / 卡住了
 
-**原因**：800 条合成数据 + 80 轮训练需要一些时间（CPU 约 2-5 分钟）。
-
-**解决**：
-- 减小 `SYNTHETIC_SAMPLES` 到 400（在 `transformer_model.py` 配置部分修改）
-- 减小 `EPOCHS` 到 40
-- 或者等一等——首次训练慢是正常的，之后模型文件就缓存了
+800 条合成数据 + 80 轮训练需要一些时间（CPU 约 2-5 分钟）。
+可以减小 `SYNTHETIC_SAMPLES` 到 400 或减小 `EPOCHS` 到 40。
 
 ### Q3: 得分看起来不太合理
 
-**原因**：合成训练数据的质量决定了模型的上限。目前数据是基于短语分数的简单叠加。
+合成训练数据的质量决定模型上限。向 `PHRASE_POOL` 添加更多短语（`transformer_model.py` 第四部分），或增加 `SYNTHETIC_SAMPLES` 到 1200。
 
-**解决**：
-- 向 `PHRASE_POOL` 添加更多真实短语（在 `transformer_model.py` 第四部分）
-- 增加 `SYNTHETIC_SAMPLES` 到 1200 或更多
-- 增加 `NUM_LAYERS` 到 3 或 4（模型更强，但训练更慢）
+### Q4: 简历解析失败 / 字段识别不准
 
-### Q4: C++ 程序输出中文乱码
+```powershell
+# 单独测试简历解析
+python resume_parser.py --file "C:/path/to/resume.pdf"
 
-**原因**：Windows 控制台编码问题。
+# 查看调试日志
+cat output/resume_debug.json
+```
 
-**解决**：
+常见原因：
+- PDF 是扫描版图片（需先安装 PaddleOCR）
+- 简历格式较特殊（可向 `resume_parser.py` 添加匹配规则）
+- 中文 PDF 字体缺少 Unicode 映射（程序已用 pdfminer.six 解决）
+
+### Q5: 简历解析报 "pdfminer.six 未安装"
+
+```powershell
+pip install pdfminer.six
+```
+
+### Q6: 图片简历识别报 "PaddleOCR 未安装"
+
+```powershell
+pip install paddlepaddle paddleocr
+# 注意：首次运行会自动下载 OCR 模型（约10MB）
+```
+
+### Q7: C++ 程序输出中文乱码
+
 - 在 Windows Terminal（而非 cmd）中运行
 - 或在运行前执行 `chcp 65001`
 - 程序本身已自动设置了 UTF-8 编码
 
-### Q5: plot.py 生成的雷达图中文显示方框
+### Q8: plot.py 生成的雷达图中文显示方框
 
-**原因**：系统缺少中文字体。
-
-**解决**：
 ```powershell
-# 安装中文字体（任选一种）
-pip install matplotlib --upgrade
-# 然后在 plot.py 中确认字体列表里有可用的中文字体
-python -c "import matplotlib.font_manager; print([f.name for f in matplotlib.font_manager.fontManager.ttflist if 'Hei' in f.name or 'YaHei' in f.name or 'SimHei' in f.name])"
+# 检查可用中文字体
+python -c "import matplotlib.font_manager; print([f.name for f in matplotlib.font_manager.fontManager.ttflist if 'Hei' in f.name or 'YaHei' in f.name])"
 ```
 
-### Q6: DeepSeek API 调用失败
+### Q9: DeepSeek API 调用失败
 
-**原因**：API Key 无效或网络不通。
-
-**解决**：
-- 检查 `ai.cpp` 中的 `DEEPSEEK_API_KEY` 宏是否配置了有效的 Key
+- 检查 `ai.cpp` 中的 `DEEPSEEK_API_KEY` 是否有效
 - 确认能访问 `https://api.deepseek.com`
 - 检查 curl 是否可用：`curl --version`
 
-### Q7: 如何只训练模型，不启动整个程序？
+### Q10: 如何只训练模型 / 只测试简历解析？
 
 ```powershell
 # 单独训练
@@ -627,46 +690,29 @@ python transformer_model.py --train
 # 训练 + 测试
 python transformer_model.py --train "测试文本"
 
-# 单独测试（需要已训练好的模型）
+# 单独测试 Transformer 评分
 python transformer_model.py "精通C++和Python"
 
-# 使用 semantic_score.py（C++ 调用的入口）
+# 使用桥接脚本（模拟 C++ 调用）
 python semantic_score.py --file output/semantic_input.txt
-python semantic_score.py "你的文本内容"
+
+# 单独测试简历解析
+python resume_parser.py --file "C:/path/to/resume.pdf"
 ```
 
-### Q8: 模型文件有多大？
+### Q11: 模型文件有多大？
 
 - `transformer_model.pt`：约 **330 KB**（包含 ~83,000 个参数）
 - `transformer_vocab.json`：约 **50 KB**
 - 非常轻量，CPU 推理仅需 **几毫秒**
 
-### Q9: 旧版的 semantic_model.py 还需要吗？
+### Q12: 旧版的 semantic_model.py 还需要吗？
 
 不再需要。`semantic_model.py`（线性回归模型）已被 `transformer_model.py` 完全替代。
-如果你确定不需要它，可以删除。
 
-### Q10: 我想修改模型的超参数，应该改哪里？
+### Q13: 如何强制使用手动输入（不用简历上传）？
 
-打开 `transformer_model.py`，找到“第二部分”的配置：
-
-```python
-MAX_SEQ_LEN = 256       # 最大文本长度（越长大模型越慢）
-EMBED_DIM = 64          # 嵌入维度（越大模型越强，但也越慢）
-NUM_HEADS = 4           # 注意力头数（必须是 EMBED_DIM 的约数）
-NUM_LAYERS = 2          # 编码器层数（深层=更强，但小数据容易过拟合）
-FFN_DIM = 256           # 前馈网络隐藏层大小
-DROPOUT = 0.3           # Dropout 率（0.3=随机丢弃30%神经元，防过拟合）
-BATCH_SIZE = 32         # 每批训练样本数
-EPOCHS = 80             # 训练轮数
-LR = 1e-3               # 学习率（太大不收敛，太小训练慢）
-SYNTHETIC_SAMPLES = 800 # 合成数据量
-```
-
-修改后重新训练：
-```powershell
-python transformer_model.py --train
-```
+启动后选 `[1]` 即可。手动输入模式下 `raw_text` 为空，评分和 AI 分析与之前完全一致。
 
 ---
 
@@ -675,11 +721,11 @@ python transformer_model.py --train
 | 术语 | 大白话解释 |
 |------|-----------|
 | **Embedding** | 把文字变成数字向量的过程。相似的词有相似的向量 |
-| **Attention（注意力）** | 让模型自动学会“看哪里”——哪些词对当前判断最重要 |
+| **Attention（注意力）** | 让模型自动学会"看哪里"——哪些词对当前判断最重要 |
 | **Multi-Head（多头）** | 同时从多个角度做注意力，综合所有人的意见 |
 | **Residual（残差连接）** | 把输入直接加到输出上，防止信息在深层网络中丢失 |
 | **LayerNorm** | 把数据归一化到同一尺度，让训练更稳定 |
-| **Dropout** | 训练时随机“关掉”一部分神经元，防止模型死记硬背 |
+| **Dropout** | 训练时随机"关掉"一部分神经元，防止模型死记硬背 |
 | **Pooling（池化）** | 把多个向量合并成一个，比如取平均 |
 | **Loss（损失函数）** | 衡量模型预测和真实答案的差距，越小越好 |
 | **Epoch** | 完整过一遍所有训练数据 = 1 轮 |
@@ -687,9 +733,12 @@ python transformer_model.py --train
 | **MSE** | Mean Squared Error，均方误差，(预测-真实)² 的平均 |
 | **Inference（推理）** | 用训练好的模型对新数据做预测 |
 | **Overfitting（过拟合）** | 对训练数据很准但对新数据不准——死记硬背而非理解 |
+| **OCR** | Optical Character Recognition，光学字符识别——从图片中"读"出文字 |
+| **PDF** | 你的电子简历文件格式 |
+| **CMap** | PDF 内部用来把字符编码映射到 Unicode 的表（中文 CMap 有时会缺失） |
 
 ---
 
-> 📅 最后更新：2026/06/06
+> 📅 最后更新：2026/06/07
 >
 > 如果你有任何问题或改进建议，欢迎提出来一起讨论！

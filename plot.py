@@ -79,4 +79,4 @@ plt.tight_layout()
 plt.savefig('output/radar.png', dpi=200, bbox_inches='tight', facecolor='white')
 plt.close()
 
-print(f"✅ {username} 的雷达图已成功保存到 output/radar.png")
+print(f"✅ {username} 的能力雷达图已成功保存到 output/radar.png")

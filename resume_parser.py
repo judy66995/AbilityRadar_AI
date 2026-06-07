@@ -25,7 +25,7 @@ AbilityRadar AI — 简历解析模块
 import sys
 import os
 import re
-import json
+import json # 用于输出结构化 JSON 数据
 
 # 确保 stdout 使用 UTF-8 编码（Windows _popen 需要）
 if sys.platform == 'win32':

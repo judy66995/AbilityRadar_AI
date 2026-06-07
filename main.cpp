@@ -59,7 +59,7 @@ int main() {
                 cout << "\n--- 手动输入模式 ---\n";
                 user = inputUserInfo();
             } else {
-                return 1;
+                return 1;// 直接退出程序
             }
         } else {
             // ── 显示提取结果并确认 ──

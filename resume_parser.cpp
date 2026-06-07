@@ -82,15 +82,15 @@ static string readFile(const string& path) {
 
 // ── 执行命令并获取 stdout 输出 ──
 static string executeCommand(const string& cmd) {
-    string ansiCmd = utf8_to_ansi(cmd);
-    if (ansiCmd.empty()) ansiCmd = cmd;
+    string ansiCmd = utf8_to_ansi(cmd);// 转换命令为 ANSI，避免 Windows cmd 乱码问题
+    if (ansiCmd.empty()) ansiCmd = cmd;// 转换失败则使用原命令（可能会乱码，但至少不崩溃）
 
     // ★ "rb" 二进制模式：Python 输出 UTF-8，避免 Windows ANSI 转换损坏中文
     FILE* pipe = _popen(ansiCmd.c_str(), "rb");
     if (!pipe) return "";
 
     char buffer[1024];
-    string output;
+    string output;// 读取命令输出
     while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
         output += buffer;
     }
@@ -115,7 +115,7 @@ bool isResumeFile(const string& filePath) {
 }
 
 ResumeData parseResumeFile(const string& filePath) {
-    ResumeData data{};
+    ResumeData data{};// 默认构造，success 默认为 false，其他字段为空字符串
     data.success = false;
 
     // ── 1. 检查文件存在 ──
